@@ -1,6 +1,7 @@
 #include <SDL.h>
 #include <stdio.h>
 #include <cstdlib>
+#include <iostream>
 
 #define FALSE 0
 #define TRUE 1
@@ -15,7 +16,7 @@
 #define PADDLE2_STARTPOS_X (WINDOW_WIDTH - PADDLE1_STARTPOS_X)
 #define PADDLE2_STARTPOS_Y (WINDOW_HEIGHT - PADDLE1_STARTPOS_Y)
 #define PADDLE_MOVE_SPEED 300
-#define BALL_MOVE_SPEED 400
+#define BALL_MOVE_SPEED 100
 
 int game_is_running = FALSE;
 SDL_Window* window = NULL;
@@ -38,12 +39,18 @@ struct ball {
 	float y;
 	float width;
 	float height;
-	float angle;
-	float speed;
-	float started;
+	float velocity_x;
+	float velocity_y;
+	//float speed;
+	//float started;
 };
 struct ball ball1;
 
+struct velocity_components {
+	float velocity_x;
+	float velocity_y;
+};
+int ball_move_init = 0;
 const Uint8* keystate = SDL_GetKeyboardState(NULL);
 
 
@@ -92,13 +99,13 @@ int check_wall_collision(void) {
 		return 0;
 	}
 }
-float set_ball_randommove(void) {
+void initialise_ball_direction(ball *ball) {
 	// random angle
+	srand(time(NULL));
 	float random_angle = (rand() % 360) * (M_PI / 180.0f); 
 	//find x and y component
-	float v_x = BALL_MOVE_SPEED * cos(random_angle);
-	float v_y = BALL_MOVE_SPEED * sin(random_angle);
-	return 0;
+	ball->velocity_x = BALL_MOVE_SPEED * cos(random_angle);
+	ball->velocity_y = BALL_MOVE_SPEED * sin(random_angle);
 }
 
 // in charge of changing game_is_running to false if needed
@@ -146,33 +153,26 @@ void setup() {
 	ball1.y = WINDOW_HEIGHT/2;
 	ball1.width = 20;
 	ball1.height = 20;
-	ball1.angle = 0;
-	ball1.speed = BALL_MOVE_SPEED;
-	ball1.started = 0;
+	ball1.velocity_x = 0;
+	ball1.velocity_y = 0;
+
 	//TO DO: setup middle-divider for pong game
 }
 
-void update() {
-	// logic to keep fixed time step
-	// sleep until we reach frame target time
-	/*int time_to_wait = FRAME_TARGET_TIME - (SDL_GetTicks() - last_frame_time);
-
-	if (time_to_wait > 0 && time_to_wait <= FRAME_TARGET_TIME) {
-		SDL_Delay(time_to_wait);
-	}*/
-	
+void update(ball *ball) {
 // get delta time factor converted to seconds to be used to update objects
 	float delta_time = (SDL_GetTicks() - last_frame_time) / 1000.0f;
 
 	last_frame_time = SDL_GetTicks();
-
+	
 	// move paddle in direction of move_direction depending on user input we checked in process_input
 	if ((check_wall_collision() * -1 == (int)paddle1.move_direction) || ((int)check_wall_collision() == 0)) {
 		paddle1.y += PADDLE_MOVE_SPEED * delta_time * paddle1.move_direction;
 	}
-	// if ball has yet to move, start moving him in random direction
-	//if ()
-	
+	// move ball depending on its x/y component of velocity
+	ball->x += ball->velocity_x * delta_time;
+	ball->y += ball->velocity_y * delta_time;
+
 }
 void render() {
 	// set color you want (activate it)
@@ -206,13 +206,14 @@ void destroy_window() {
 int main(int argc, char*argv[]) {
 	game_is_running = initialise_window();
 	setup();
+	initialise_ball_direction(&ball1);
 
 	enum GameState {
 		main_menu = 1,
 		game = 2
 	};
 	GameState current_state = game;
-
+	
 
 	while (game_is_running) {
 		switch (current_state) {
@@ -220,7 +221,7 @@ int main(int argc, char*argv[]) {
 			break;
 		case game:
 			process_input();
-			update();
+			update(&ball1);
 			render();
 			break;
 		}
