@@ -15,8 +15,8 @@
 #define PADDLE1_STARTPOS_Y 100
 #define PADDLE2_STARTPOS_X 760
 #define PADDLE2_STARTPOS_Y 400
-#define PADDLE_MOVE_SPEED 300
-#define BALL_MOVE_SPEED 100
+#define PADDLE_MOVE_SPEED 400
+#define BALL_MOVE_SPEED 300
 
 int game_is_running = FALSE;
 SDL_Window* window = NULL;
@@ -87,12 +87,12 @@ int initialise_window(void){
 }
 
 //check for collision with ceiling or floor (edge of windows)
-int check_wall_collision(void) {
+int check_wall_collision(paddle *paddle) {
 	//assuming that the y position is the center, we just need to add half the size to get top/bottom
-	if (paddle1.y <= 0) {
+	if (paddle->y <= 0) {
 		return -1;
 	}
-	else if ((paddle1.y + paddle1.height) >= WINDOW_HEIGHT) {
+	else if ((paddle->y + paddle->height) >= WINDOW_HEIGHT) {
 		return 1;
 	}
 	else {
@@ -176,7 +176,7 @@ void update(ball *ball) {
 	last_frame_time = SDL_GetTicks();
 	
 	// move paddle in direction of move_direction depending on user input we checked in process_input
-	if ((check_wall_collision() * -1 == (int)paddle1.move_direction) || ((int)check_wall_collision() == 0)) {
+	if ((check_wall_collision(&paddle1) * -1 == (int)paddle1.move_direction) || ((int)check_wall_collision(&paddle1) == 0)) {
 		paddle1.y += PADDLE_MOVE_SPEED * delta_time * paddle1.move_direction;
 	}
 	// move ball depending on its x/y component of velocity
@@ -195,9 +195,17 @@ void update(ball *ball) {
 		ball->velocity_y = 0;
 		initialise_ball_direction(&ball1);
 	}
-	
 	ball->x += ball->velocity_x * delta_time;
 	ball->y += ball->velocity_y * delta_time;
+	// have paddle 2 move towards the ball
+	if (ball->y >= paddle2.y + PADDLE_HEIGHT / 2 && paddle2.y + PADDLE_HEIGHT <= WINDOW_HEIGHT ) {
+		paddle2.y += PADDLE_MOVE_SPEED * delta_time;
+		
+	}
+	else if (ball->y <= paddle2.y + PADDLE_HEIGHT/2 && paddle2.y >= 0) {
+		paddle2.y -= PADDLE_MOVE_SPEED * delta_time;
+
+	}
 
 }
 void render() {
@@ -247,7 +255,6 @@ int main(int argc, char*argv[]) {
 	};
 	GameState current_state = game;
 	
-
 	while (game_is_running) {
 		switch (current_state) {
 		case main_menu:
@@ -266,26 +273,4 @@ int main(int argc, char*argv[]) {
 	return 0;
 
 }
-
-
-
-//SDL_Window* window = nullptr;
-//SDL_Renderer* renderer = nullptr;
-//
-//SDL_Init(SDL_INIT_VIDEO);
-//SDL_CreateWindowAndRenderer(640, 480, 0, &window, &renderer);
-//
-///*set render color, sets the bg color, then clear since we don't want to draw with it but just use it for bg*/
-//SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-//SDL_RenderClear(renderer);
-//
-///*set to white*/
-//SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-///*draw point to center*/
-//SDL_RenderDrawPoint(renderer, 640 / 2, 480 / 2);
-//
-///*PRESENT the renderer*/
-//SDL_RenderPresent(renderer);
-//SDL_Delay(5000);
-//SDL_DestroyWindow(window);
 
