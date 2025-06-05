@@ -170,6 +170,11 @@ void update(ball *ball) {
 		paddle1.y += PADDLE_MOVE_SPEED * delta_time * paddle1.move_direction;
 	}
 	// move ball depending on its x/y component of velocity
+	// if ball_position above/below screen, change direction before moving
+	if (ball->y <= 0 || (ball->y + ball->height) >= WINDOW_HEIGHT) {
+		ball->velocity_y = -ball->velocity_y;
+	}
+	
 	ball->x += ball->velocity_x * delta_time;
 	ball->y += ball->velocity_y * delta_time;
 
