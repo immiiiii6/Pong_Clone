@@ -13,8 +13,8 @@
 #define PADDLE_WIDTH 20
 #define PADDLE1_STARTPOS_X 20
 #define PADDLE1_STARTPOS_Y 100
-#define PADDLE2_STARTPOS_X (WINDOW_WIDTH - PADDLE1_STARTPOS_X)
-#define PADDLE2_STARTPOS_Y (WINDOW_HEIGHT - PADDLE1_STARTPOS_Y)
+#define PADDLE2_STARTPOS_X 760
+#define PADDLE2_STARTPOS_Y 400
 #define PADDLE_MOVE_SPEED 300
 #define BALL_MOVE_SPEED 100
 
@@ -107,6 +107,16 @@ void initialise_ball_direction(ball *ball) {
 	ball->velocity_x = BALL_MOVE_SPEED * cos(random_angle);
 	ball->velocity_y = BALL_MOVE_SPEED * sin(random_angle);
 }
+int check_paddle_ball_collision(ball* ball) {
+	//check against left paddle first
+	if (ball->x <= paddle1.x + PADDLE_WIDTH && ball->y >= paddle1.y && ball->y <= paddle1.y + paddle1.height) {
+		return 1;
+	}
+	else if (ball->x >= paddle2.x && ball->y >= paddle2.y && ball->y <= paddle2.y + paddle1.height) {
+		return 1;
+	}
+	else return 0;
+}
 
 // in charge of changing game_is_running to false if needed
 void process_input() {
@@ -174,6 +184,9 @@ void update(ball *ball) {
 	if (ball->y <= 0 || (ball->y + ball->height) >= WINDOW_HEIGHT) {
 		ball->velocity_y = -ball->velocity_y;
 	}
+	if (check_paddle_ball_collision(&ball1)) {
+		ball->velocity_x = -ball->velocity_x;
+	}
 	
 	ball->x += ball->velocity_x * delta_time;
 	ball->y += ball->velocity_y * delta_time;
@@ -190,6 +203,12 @@ void render() {
 		(int)paddle1.width,
 		(int)paddle1.height
 	};
+	SDL_Rect paddle2_rect = {
+		(int)paddle2.x ,
+		(int)paddle2.y,
+		(int)paddle2.width,
+		(int)paddle2.height
+	};
 	SDL_Rect ball1_rect = {
 		(int)ball1.x ,
 		(int)ball1.y,
@@ -199,6 +218,7 @@ void render() {
 	SDL_SetRenderDrawColor(renderer, 0, 255, 0, 255);
 	SDL_RenderFillRect(renderer, &paddle1_rect);
 	SDL_RenderFillRect(renderer, &ball1_rect);
+	SDL_RenderFillRect(renderer, &paddle2_rect);
 
 	SDL_RenderPresent(renderer);
 }
