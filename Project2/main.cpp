@@ -112,7 +112,7 @@ int check_paddle_ball_collision(ball* ball) {
 	if (ball->x <= paddle1.x + PADDLE_WIDTH && ball->y >= paddle1.y && ball->y <= paddle1.y + paddle1.height) {
 		return 1;
 	}
-	else if (ball->x >= paddle2.x && ball->y >= paddle2.y && ball->y <= paddle2.y + paddle1.height) {
+	else if (ball->x + PADDLE_WIDTH >= paddle2.x && ball->y >= paddle2.y && ball->y <= paddle2.y + paddle1.height) {
 		return 1;
 	}
 	else return 0;
@@ -186,6 +186,14 @@ void update(ball *ball) {
 	}
 	if (check_paddle_ball_collision(&ball1)) {
 		ball->velocity_x = -ball->velocity_x;
+	}
+	// if ball exits screen reset it's position at centre and randomise direction
+	if (ball->x + ball->width <= 0 || ball->x >= WINDOW_WIDTH) {
+		ball->x = WINDOW_WIDTH / 2;
+		ball->y = WINDOW_HEIGHT / 2;
+		ball->velocity_x = 0;
+		ball->velocity_y = 0;
+		initialise_ball_direction(&ball1);
 	}
 	
 	ball->x += ball->velocity_x * delta_time;
