@@ -87,7 +87,7 @@ int initialise_window(void){
 }
 
 //check for collision with ceiling or floor (edge of windows)
-int check_wall_collision(paddle *paddle) {
+int check_wall_collision(paddle* paddle) {
 	//assuming that the y position is the center, we just need to add half the size to get top/bottom
 	if (paddle->y <= 0) {
 		return -1;
@@ -99,10 +99,10 @@ int check_wall_collision(paddle *paddle) {
 		return 0;
 	}
 }
-void initialise_ball_direction(ball *ball) {
+void initialise_ball_direction(ball* ball) {
 	// random angle
 	srand(time(NULL));
-	float random_angle = (rand() % 360) * (M_PI / 180.0f); 
+	float random_angle = (rand() % 360) * (M_PI / 180.0f);
 	//find x and y component
 	ball->velocity_x = BALL_MOVE_SPEED * cos(random_angle);
 	ball->velocity_y = BALL_MOVE_SPEED * sin(random_angle);
@@ -138,7 +138,7 @@ void process_input() {
 	if (keystate[SDL_SCANCODE_W] == 1) {
 		paddle1.move_direction = -1;
 	}
-	else if(keystate[SDL_SCANCODE_S] == 1){
+	else if (keystate[SDL_SCANCODE_S] == 1) {
 		paddle1.move_direction = 1;
 	}
 	else {
@@ -159,8 +159,8 @@ void setup() {
 	paddle2.height = PADDLE_HEIGHT;
 	paddle2.move_direction = 0;
 
-	ball1.x = WINDOW_WIDTH/2;
-	ball1.y = WINDOW_HEIGHT/2;
+	ball1.x = WINDOW_WIDTH / 2;
+	ball1.y = WINDOW_HEIGHT / 2;
 	ball1.width = 20;
 	ball1.height = 20;
 	ball1.velocity_x = 0;
@@ -169,19 +169,26 @@ void setup() {
 	//TO DO: setup middle-divider for pong game
 }
 
-void update(ball *ball) {
-// get delta time factor converted to seconds to be used to update objects
+void update(ball* ball) {
+	// get delta time factor converted to seconds to be used to update objects
 	float delta_time = (SDL_GetTicks() - last_frame_time) / 1000.0f;
 
 	last_frame_time = SDL_GetTicks();
-	
+
 	// move paddle in direction of move_direction depending on user input we checked in process_input
 	if ((check_wall_collision(&paddle1) * -1 == (int)paddle1.move_direction) || ((int)check_wall_collision(&paddle1) == 0)) {
 		paddle1.y += PADDLE_MOVE_SPEED * delta_time * paddle1.move_direction;
 	}
 	// move ball depending on its x/y component of velocity
 	// if ball_position above/below screen, change direction before moving
-	if (ball->y <= 0 || (ball->y + ball->height) >= WINDOW_HEIGHT) {
+	if (ball->y <= 0) {
+		// offset added for cases when ball moves too fast and ends up being out of the screen
+		// for multiple frames, which leads to issues so have added offset to avoid that
+		ball->y = 1;
+		ball->velocity_y = -ball->velocity_y;
+	}
+	else if (ball->y + ball->height >= WINDOW_HEIGHT){
+		ball->y = WINDOW_HEIGHT - ball->height - 1;
 		ball->velocity_y = -ball->velocity_y;
 	}
 	if (check_paddle_ball_collision(&ball1)) {
