@@ -52,6 +52,8 @@ struct velocity_components {
 };
 int ball_move_init = 0;
 const Uint8* keystate = SDL_GetKeyboardState(NULL);
+// to make the AI react after a delay instead of instantly to the balls position
+float reaction_timer = 0;
 
 
 int initialise_window(void){
@@ -82,7 +84,6 @@ int initialise_window(void){
 		fprintf(stderr, "Error creating SDL Renderer. \n");
 		return FALSE;
 	}
-
 	return TRUE;
 }
 
@@ -109,10 +110,10 @@ void initialise_ball_direction(ball* ball) {
 }
 int check_paddle_ball_collision(ball* ball) {
 	//check against left paddle first
-	if (ball->x <= paddle1.x + PADDLE_WIDTH && ball->y >= paddle1.y && ball->y <= paddle1.y + paddle1.height) {
+	if (ball->x <= paddle1.x + PADDLE_WIDTH && ball->x + ball->width >= paddle1.x && ball->y <= paddle1.y + PADDLE_HEIGHT && ball->y + ball->height >= paddle1.y) {
 		return 1;
 	}
-	else if (ball->x + PADDLE_WIDTH >= paddle2.x && ball->y >= paddle2.y && ball->y <= paddle2.y + paddle1.height) {
+	else if (paddle2.x <= ball->x + ball->width && paddle2.x + PADDLE_WIDTH >= ball->x && paddle2.y <= ball->y + ball->height && paddle2.y + PADDLE_HEIGHT >= ball->y) {
 		return 1;
 	}
 	else return 0;
@@ -168,7 +169,6 @@ void setup() {
 
 	//TO DO: setup middle-divider for pong game
 }
-
 void update(ball* ball) {
 	// get delta time factor converted to seconds to be used to update objects
 	float delta_time = (SDL_GetTicks() - last_frame_time) / 1000.0f;
@@ -204,15 +204,18 @@ void update(ball* ball) {
 	}
 	ball->x += ball->velocity_x * delta_time;
 	ball->y += ball->velocity_y * delta_time;
-	// have paddle 2 move towards the ball
-	if (ball->y >= paddle2.y + PADDLE_HEIGHT / 2 && paddle2.y + PADDLE_HEIGHT <= WINDOW_HEIGHT ) {
-		paddle2.y += PADDLE_MOVE_SPEED * delta_time;
-		
+	// have paddle 2 move towards the ball after a slight delay
+	reaction_timer += delta_time;
+	if (reaction_timer >= 0.1f) {
+		reaction_timer = 0;
+		if (ball->y >= paddle2.y + PADDLE_HEIGHT / 2 && paddle2.y + PADDLE_HEIGHT <= WINDOW_HEIGHT) {
+			paddle2.y += PADDLE_MOVE_SPEED * delta_time;
+		}
+		else if (ball->y <= paddle2.y + PADDLE_HEIGHT / 2 && paddle2.y >= 0) {
+			paddle2.y -= PADDLE_MOVE_SPEED * delta_time;
+		}
 	}
-	else if (ball->y <= paddle2.y + PADDLE_HEIGHT/2 && paddle2.y >= 0) {
-		paddle2.y -= PADDLE_MOVE_SPEED * delta_time;
-
-	}
+	
 
 }
 void render() {
