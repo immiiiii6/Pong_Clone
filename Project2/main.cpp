@@ -114,7 +114,7 @@ int check_paddle_ball_collision(ball* ball) {
 		return 1;
 	}
 	else if (paddle2.x <= ball->x + ball->width && paddle2.x + PADDLE_WIDTH >= ball->x && paddle2.y <= ball->y + ball->height && paddle2.y + PADDLE_HEIGHT >= ball->y) {
-		return 1;
+		return 2;
 	}
 	else return 0;
 }
@@ -181,17 +181,21 @@ void update(ball* ball) {
 	}
 	// move ball depending on its x/y component of velocity
 	// if ball_position above/below screen, change direction before moving
-	if (ball->y <= 0) {
-		// offset added for cases when ball moves too fast and ends up being out of the screen
-		// for multiple frames, which leads to issues so have added offset to avoid that
-		ball->y = 1;
+	if (ball->y <= 0 || ball->y + ball->height >= WINDOW_HEIGHT) {
 		ball->velocity_y = -ball->velocity_y;
+		ball->y = std::max(1.0f, std::min(WINDOW_HEIGHT - ball->height - 1, ball->y));
 	}
-	else if (ball->y + ball->height >= WINDOW_HEIGHT){
-		ball->y = WINDOW_HEIGHT - ball->height - 1;
-		ball->velocity_y = -ball->velocity_y;
+	if (check_paddle_ball_collision(&ball1) == 1) {
+		// offset to avoid ball being in collision state for multiple frames
+		ball->x = paddle1.x + PADDLE_WIDTH + 1;
+		//reverse direction
+		ball->velocity_x = -ball->velocity_x;
 	}
-	if (check_paddle_ball_collision(&ball1)) {
+	// repeat for if collide with paddle2
+	if (check_paddle_ball_collision(&ball1) == 2) {
+		// offset to avoid ball being in collision state for multiple frames
+		ball->x = paddle2.x - ball->width - 1;
+		//reverse direction
 		ball->velocity_x = -ball->velocity_x;
 	}
 	// if ball exits screen reset it's position at centre and randomise direction
@@ -207,16 +211,16 @@ void update(ball* ball) {
 	// have paddle 2 move towards the ball after a slight delay
 	reaction_timer += delta_time;
 	if (reaction_timer >= 0.1f) {
-		reaction_timer = 0;
-		if (ball->y >= paddle2.y + PADDLE_HEIGHT / 2 && paddle2.y + PADDLE_HEIGHT <= WINDOW_HEIGHT) {
+		if (ball->velocity_x < 0) {
+			reaction_timer = 0;
+		}
+		else if (ball->y >= paddle2.y + PADDLE_HEIGHT / 2 && paddle2.y + PADDLE_HEIGHT <= WINDOW_HEIGHT) {
 			paddle2.y += PADDLE_MOVE_SPEED * delta_time;
 		}
 		else if (ball->y <= paddle2.y + PADDLE_HEIGHT / 2 && paddle2.y >= 0) {
 			paddle2.y -= PADDLE_MOVE_SPEED * delta_time;
-		}
+		}	
 	}
-	
-
 }
 void render() {
 	// set color you want (activate it)
