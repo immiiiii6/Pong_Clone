@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <cstdlib>
 #include <iostream>
+#include <math.h>
 
 #define FALSE 0
 #define TRUE 1
@@ -17,12 +18,16 @@
 #define PADDLE2_STARTPOS_Y 400
 #define PADDLE_MOVE_SPEED 400
 #define BALL_MOVE_SPEED 300
+#define MOVEMENT_INCREMENT 30
 
 int game_is_running = FALSE;
 SDL_Window* window = NULL;
 SDL_Renderer* renderer = NULL;
 
 int last_frame_time = 0;
+//flag for making sure we call the ball_endpoint prediction only once each time it starts moving right
+bool ball_was_moving_right = FALSE;
+float predicted_ball_y;
 
 struct paddle {
 	float x;
@@ -118,6 +123,53 @@ int check_paddle_ball_collision(ball* ball) {
 	}
 	else return 0;
 }
+// function to map vertical distance between centre of paddle 2 (bot) and centre of ball to domain [0,1]
+// this can then be multiplied with the movement speed to slow down the paddle as it approaches
+float sigmoid_distance(ball* ball) {
+	float distance = ((ball->height / 2) - ball->y) - ((PADDLE_HEIGHT / 2) - paddle2.y);
+	float sig_distance = ((distance / (abs(distance) + 1)) + 1) / 2;
+// sig_distance was giving me numbers that were too small, so scaled it up by a 100
+	sig_distance = sig_distance * 100;
+	return sig_distance;
+}
+//function to calculate where ball will end up for bot to move to
+float ball_endpoint(ball* ball) {
+	float final_y_pos = 0;
+	int bounce_count = 0;
+	//calculate time to reach paddle's x position
+	float time = (paddle2.x - ball->x) / (ball->velocity_x);
+	//using this find what y-position it would reach after this time
+	float predicted_y = ball->y + (ball->velocity_y * time);
+	//find out how many times the ball would have bounced on the top/bottom
+	//first if it went up
+	if (predicted_y < 0) {
+		bounce_count = (fabs(predicted_y) / WINDOW_HEIGHT) + 1;
+		// if bounce count is even we need just the remainder, if uneven we need 
+		// window height - remainder to get to the final y position
+		if (bounce_count % 2 != 0) {
+			final_y_pos = fmod(fabs(predicted_y), WINDOW_HEIGHT);
+		}
+		else if (bounce_count % 2 == 0) {
+			final_y_pos = WINDOW_HEIGHT - fmod(fabs(predicted_y), WINDOW_HEIGHT);
+		}
+	}
+	else if (predicted_y > WINDOW_HEIGHT) {
+		bounce_count = ((predicted_y - WINDOW_HEIGHT) / WINDOW_HEIGHT) + 1;
+		// this section flipped for when we go below the screen
+		if (bounce_count % 2 != 0) {
+			final_y_pos = WINDOW_HEIGHT - fmod((predicted_y - WINDOW_HEIGHT), WINDOW_HEIGHT);
+		}
+		else if (bounce_count % 2 == 0) {
+			final_y_pos = fmod((predicted_y - WINDOW_HEIGHT), WINDOW_HEIGHT);
+		}
+	}
+	// if predicted y is in bounds and didn't need to bounce, we can simply take it as is
+	else {
+		final_y_pos = predicted_y;
+	}
+	printf("final_y_pos: %f \n", final_y_pos);
+	return final_y_pos;
+}
 
 // in charge of changing game_is_running to false if needed
 void process_input() {
@@ -184,6 +236,7 @@ void update(ball* ball) {
 	if (ball->y <= 0 || ball->y + ball->height >= WINDOW_HEIGHT) {
 		ball->velocity_y = -ball->velocity_y;
 		ball->y = std::max(1.0f, std::min(WINDOW_HEIGHT - ball->height - 1, ball->y));
+		
 	}
 	if (check_paddle_ball_collision(&ball1) == 1) {
 		// offset to avoid ball being in collision state for multiple frames
@@ -208,19 +261,26 @@ void update(ball* ball) {
 	}
 	ball->x += ball->velocity_x * delta_time;
 	ball->y += ball->velocity_y * delta_time;
-	// have paddle 2 move towards the ball after a slight delay
-	reaction_timer += delta_time;
-	if (reaction_timer >= 0.1f) {
-		if (ball->velocity_x < 0) {
-			reaction_timer = 0;
-		}
-		else if (ball->y >= paddle2.y + PADDLE_HEIGHT / 2 && paddle2.y + PADDLE_HEIGHT <= WINDOW_HEIGHT) {
+	// have paddle 2 move towards the ball 
+
+	
+	if (ball->velocity_x > 0 && ball_was_moving_right == FALSE) {
+		// if the predicted y position is below/ above the paddle + an increment, move it in that direction
+		predicted_ball_y = ball_endpoint(&ball1);
+		ball_was_moving_right = TRUE;
+	}
+	if (ball->velocity_x > 0) {
+		if (predicted_ball_y - (paddle2.y + (PADDLE_HEIGHT / 2)) > MOVEMENT_INCREMENT) {
 			paddle2.y += PADDLE_MOVE_SPEED * delta_time;
 		}
-		else if (ball->y <= paddle2.y + PADDLE_HEIGHT / 2 && paddle2.y >= 0) {
+		else if (predicted_ball_y - (paddle2.y + (PADDLE_HEIGHT / 2)) < -MOVEMENT_INCREMENT) {
 			paddle2.y -= PADDLE_MOVE_SPEED * delta_time;
-		}	
+		}
 	}
+	if (ball->velocity_x < 0) {
+		ball_was_moving_right = FALSE;
+	}
+	/*printf("predicted_y : %f \n", predicted_ball_y);*/
 }
 void render() {
 	// set color you want (activate it)
