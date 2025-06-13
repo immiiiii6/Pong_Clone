@@ -19,6 +19,7 @@
 #define PADDLE_MOVE_SPEED 400
 #define BALL_MOVE_SPEED 300
 #define MOVEMENT_INCREMENT 30
+#define MAX_BOUNCE_ANGLE M_PI/4
 
 int game_is_running = FALSE;
 SDL_Window* window = NULL;
@@ -60,6 +61,12 @@ const Uint8* keystate = SDL_GetKeyboardState(NULL);
 // to make the AI react after a delay instead of instantly to the balls position
 float reaction_timer = 0;
 
+struct paddle_velocities {
+	float velocity_x;
+	float velocity_y;
+};
+
+float ball_movement_angle;
 
 int initialise_window(void){
 	//returns 0 if works, so if not there was a error
@@ -108,10 +115,11 @@ int check_wall_collision(paddle* paddle) {
 void initialise_ball_direction(ball* ball) {
 	// random angle
 	srand(time(NULL));
-	float random_angle = (rand() % 360) * (M_PI / 180.0f);
+	ball_movement_angle = (rand() % 360) * (M_PI / 180.0f);
 	//find x and y component
-	ball->velocity_x = BALL_MOVE_SPEED * cos(random_angle);
-	ball->velocity_y = BALL_MOVE_SPEED * sin(random_angle);
+	ball->velocity_x = BALL_MOVE_SPEED * cos(ball_movement_angle);
+	ball->velocity_y = BALL_MOVE_SPEED * sin(ball_movement_angle);
+	printf("random angle is : %f \n", (ball_movement_angle / (M_PI / 180.0f)));
 }
 int check_paddle_ball_collision(ball* ball) {
 	//check against left paddle first
@@ -123,15 +131,7 @@ int check_paddle_ball_collision(ball* ball) {
 	}
 	else return 0;
 }
-// function to map vertical distance between centre of paddle 2 (bot) and centre of ball to domain [0,1]
-// this can then be multiplied with the movement speed to slow down the paddle as it approaches
-float sigmoid_distance(ball* ball) {
-	float distance = ((ball->height / 2) - ball->y) - ((PADDLE_HEIGHT / 2) - paddle2.y);
-	float sig_distance = ((distance / (abs(distance) + 1)) + 1) / 2;
-// sig_distance was giving me numbers that were too small, so scaled it up by a 100
-	sig_distance = sig_distance * 100;
-	return sig_distance;
-}
+
 //function to calculate where ball will end up for bot to move to
 float ball_endpoint(ball* ball) {
 	float final_y_pos = 0;
@@ -169,6 +169,23 @@ float ball_endpoint(ball* ball) {
 	}
 	printf("final_y_pos: %f \n", final_y_pos);
 	return final_y_pos;
+}
+// function for changing direction depending on where ball has hit the paddle
+void direction_change(ball* ball, paddle paddle, bool isleftpaddle) {
+	// how far above/below midpoint of paddle did we collide with 
+	float diff_mid =  (ball->y + (ball->height / 2)) - (paddle.y + (PADDLE_HEIGHT / 2));
+	//normalise to range (1,-1)
+	float normalised_diff_mid = diff_mid / (PADDLE_HEIGHT / 2);
+	//scale this by multiplying with max_angle to get max bounce angle in either direction
+	ball_movement_angle = normalised_diff_mid * MAX_BOUNCE_ANGLE;
+	//reset velocity based on this angle
+	if (isleftpaddle == TRUE) {
+		ball->velocity_x = BALL_MOVE_SPEED * cos(ball_movement_angle);
+	}
+	else {
+		ball->velocity_x = -BALL_MOVE_SPEED * cos(ball_movement_angle);
+	}
+	ball->velocity_y = BALL_MOVE_SPEED * sin(ball_movement_angle);
 }
 
 // in charge of changing game_is_running to false if needed
@@ -241,15 +258,13 @@ void update(ball* ball) {
 	if (check_paddle_ball_collision(&ball1) == 1) {
 		// offset to avoid ball being in collision state for multiple frames
 		ball->x = paddle1.x + PADDLE_WIDTH + 1;
-		//reverse direction
-		ball->velocity_x = -ball->velocity_x;
+		direction_change(&ball1, paddle1, TRUE);
 	}
 	// repeat for if collide with paddle2
 	if (check_paddle_ball_collision(&ball1) == 2) {
 		// offset to avoid ball being in collision state for multiple frames
 		ball->x = paddle2.x - ball->width - 1;
-		//reverse direction
-		ball->velocity_x = -ball->velocity_x;
+		direction_change(&ball1, paddle2 , FALSE);
 	}
 	// if ball exits screen reset it's position at centre and randomise direction
 	if (ball->x + ball->width <= 0 || ball->x >= WINDOW_WIDTH) {
@@ -263,7 +278,6 @@ void update(ball* ball) {
 	ball->y += ball->velocity_y * delta_time;
 	// have paddle 2 move towards the ball 
 
-	
 	if (ball->velocity_x > 0 && ball_was_moving_right == FALSE) {
 		// if the predicted y position is below/ above the paddle + an increment, move it in that direction
 		predicted_ball_y = ball_endpoint(&ball1);
