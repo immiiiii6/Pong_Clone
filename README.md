@@ -1,0 +1,1 @@
+Pong clone in C++ using SDL2 to learn some of the basics of game dev as well as using C++ for the first time. You can play against a bot that's pretty hard to (and satisfying) to beat which is an absolute win and I'm ready to learn more in the next project now
