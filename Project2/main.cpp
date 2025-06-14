@@ -17,7 +17,7 @@
 #define PADDLE2_STARTPOS_X 760
 #define PADDLE2_STARTPOS_Y 400
 #define PADDLE_MOVE_SPEED 400
-#define BALL_MOVE_SPEED 300
+#define BALL_MOVE_SPEED 800
 #define MOVEMENT_INCREMENT 30
 #define MAX_BOUNCE_ANGLE M_PI/4
 
@@ -115,7 +115,22 @@ int check_wall_collision(paddle* paddle) {
 void initialise_ball_direction(ball* ball) {
 	// random angle
 	srand(time(NULL));
-	ball_movement_angle = (rand() % 360) * (M_PI / 180.0f);
+	ball_movement_angle = (rand() % 360);
+	// clamp the random angle to limit direction of ball at start of game
+	if (ball_movement_angle > 225 && ball_movement_angle <= 270) {
+		ball_movement_angle = 225;
+	}
+	else if (ball_movement_angle > 270 && ball_movement_angle < 305) {
+		ball_movement_angle = 305;
+	}
+	else if (ball_movement_angle < 135 && ball_movement_angle >= 90) {
+		ball_movement_angle = 135;
+	}
+	else if (ball_movement_angle < 90 && ball_movement_angle > 45) {
+		ball_movement_angle = 45;
+	}
+	// convert to radians
+	ball_movement_angle = ball_movement_angle * (M_PI / 180.0f);
 	//find x and y component
 	ball->velocity_x = BALL_MOVE_SPEED * cos(ball_movement_angle);
 	ball->velocity_y = BALL_MOVE_SPEED * sin(ball_movement_angle);
